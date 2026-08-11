@@ -7,7 +7,24 @@ function readStoredValue<T>(key: string, fallbackValue: T) {
 
   try {
     const storedValue = window.localStorage.getItem(key)
-    return storedValue ? (JSON.parse(storedValue) as T) : fallbackValue
+    if (!storedValue) return fallbackValue
+
+    const parsed = JSON.parse(storedValue) as T
+
+    // If both values are plain objects, merge so any newly added fields
+    // in the fallback are present even when loading older stored data.
+    if (
+      parsed !== null &&
+      typeof parsed === "object" &&
+      !Array.isArray(parsed) &&
+      fallbackValue !== null &&
+      typeof fallbackValue === "object" &&
+      !Array.isArray(fallbackValue)
+    ) {
+      return { ...fallbackValue, ...parsed } as T
+    }
+
+    return parsed
   } catch {
     return fallbackValue
   }

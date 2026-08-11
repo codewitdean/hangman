@@ -162,7 +162,7 @@ function App() {
         </div>
         <div>
           <span>
-            {stats.wins > 0
+            {stats.wins > 0 && stats.totalGuesses > 0
               ? (stats.totalGuesses / stats.wins).toFixed(1)
               : "—"}
           </span>
