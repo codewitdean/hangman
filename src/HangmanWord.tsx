@@ -1,19 +1,38 @@
-export function HangmanWord(){
-    const word="test"
-    const guessedLetters=["t",'e'," s","t"]
-    return( <div style={{
-        display:"flex",
-         gap:".25em",fontSize:"5rem",
-          fontWeight:"bold",textTransform:"uppercase",fontFamily:"monospace"
-    }}>
-{word.split("").map((letter,index)=>(
-    <span style={{borderBottom:".1em solid black"}} key={index}>
-        <span style ={{
-            visibility:guessedLetters.includes(letter)?"visible":"hidden",
-        }}>
-           {letter} 
-        </span>
-        </span>
-))}
+type HangmanWordProps = {
+  guessedLetters: string[]
+  reveal?: boolean
+  wordToGuess: string
+}
+
+export function HangmanWord({
+  guessedLetters,
+  reveal = false,
+  wordToGuess,
+}: HangmanWordProps) {
+  const accessibleWord = wordToGuess
+    .split("")
+    .map(letter => (guessedLetters.includes(letter) || reveal ? letter : "blank"))
+    .join(" ")
+
+  return (
+    <div className="word-wrap" aria-label={`Word: ${accessibleWord}`}>
+      {wordToGuess.split("").map((letter, index) => {
+        const isGuessed = guessedLetters.includes(letter)
+        const isRevealed = reveal && !isGuessed
+
+        return (
+          <span className="word-slot" key={`${letter}-${index}`}>
+            <span
+              className={`word-letter ${isGuessed || reveal ? "is-visible" : ""} ${
+                isRevealed ? "is-missed" : ""
+              }`}
+              aria-hidden="true"
+            >
+              {letter}
+            </span>
+          </span>
+        )
+      })}
     </div>
-)}
+  )
+}
