@@ -22,6 +22,7 @@ export type GameStats = {
   gamesPlayed: number
   hintsUsed: number
   losses: number
+  totalGuesses: number
   wins: number
 }
 
@@ -43,6 +44,7 @@ const DEFAULT_STATS: GameStats = {
   gamesPlayed: 0,
   hintsUsed: 0,
   losses: 0,
+  totalGuesses: 0,
   wins: 0,
 }
 
@@ -53,7 +55,7 @@ function rememberWord(currentWords: string[], word: string) {
   return [...currentWords, word].slice(-MAX_REMEMBERED_WORDS)
 }
 
-function updateStatsForResult(stats: GameStats, won: boolean) {
+function updateStatsForResult(stats: GameStats, won: boolean, guessCount: number) {
   const currentStreak = won ? stats.currentStreak + 1 : 0
 
   return {
@@ -62,6 +64,7 @@ function updateStatsForResult(stats: GameStats, won: boolean) {
     gamesPlayed: stats.gamesPlayed + 1,
     hintsUsed: stats.hintsUsed,
     losses: stats.losses + (won ? 0 : 1),
+    totalGuesses: stats.totalGuesses + guessCount,
     wins: stats.wins + (won ? 1 : 0),
   }
 }
@@ -70,6 +73,7 @@ export function useHangmanGame() {
   const feedbackId = useRef(0)
   const usedWords = useRef<string[]>([])
   const roundComplete = useRef(false)
+  const hintsUsedThisRound = useRef(0)
   const [settings, setSettings] = useLocalStorageState(
     "hangman:settings",
     DEFAULT_SETTINGS,
@@ -119,7 +123,13 @@ export function useHangmanGame() {
 
       const won = nextStatus === "won"
       roundComplete.current = true
-      setStats(currentStats => updateStatsForResult(currentStats, won))
+      setStats(currentStats => {
+        const updated = updateStatsForResult(currentStats, won, nextGuessedLetters.length)
+        return {
+          ...updated,
+          hintsUsed: currentStats.hintsUsed + hintsUsedThisRound.current,
+        }
+      })
       setAnnouncement(
         won
           ? `You won. The word was ${wordToGuess}.`
@@ -149,6 +159,7 @@ export function useHangmanGame() {
       setGuessedLetters([])
       setHintsRemaining(MAX_HINTS)
       roundComplete.current = false
+      hintsUsedThisRound.current = 0
       setAnnouncement("New word ready.")
     },
     [settings],
@@ -166,10 +177,26 @@ export function useHangmanGame() {
 
       setGuessedLetters(nextGuessedLetters)
       if (!completeRoundIfNeeded(nextGuessedLetters)) {
+        const newIncorrectCount = nextGuessedLetters.filter(
+          l => !wordToGuess.includes(l),
+        ).length
+        const bodyPartNames = [
+          "head",
+          "body",
+          "right arm",
+          "left arm",
+          "right leg",
+          "left leg",
+        ]
+        const bodyPartAdded = !isCorrect ? bodyPartNames[newIncorrectCount - 1] : null
+        const guessesLeft = MAX_INCORRECT_GUESSES - newIncorrectCount
+
         setAnnouncement(
           isCorrect
             ? `${guessedLetter.toUpperCase()} is in the word.`
-            : `${guessedLetter.toUpperCase()} is not in the word.`,
+            : bodyPartAdded
+              ? `${guessedLetter.toUpperCase()} is not in the word. ${bodyPartAdded} added. ${guessesLeft} ${guessesLeft === 1 ? "guess" : "guesses"} remaining.`
+              : `${guessedLetter.toUpperCase()} is not in the word.`,
         )
         pushFeedback(isCorrect ? "correct" : "wrong")
       }
@@ -187,10 +214,7 @@ export function useHangmanGame() {
 
     setGuessedLetters(nextGuessedLetters)
     setHintsRemaining(currentHints => Math.max(0, currentHints - 1))
-    setStats(currentStats => ({
-      ...currentStats,
-      hintsUsed: currentStats.hintsUsed + 1,
-    }))
+    hintsUsedThisRound.current += 1
     if (!completeRoundIfNeeded(nextGuessedLetters)) {
       setAnnouncement(`Hint revealed ${hintLetter.toUpperCase()}.`)
       pushFeedback("hint")
@@ -200,7 +224,6 @@ export function useHangmanGame() {
     completeRoundIfNeeded,
     guessedLetters,
     pushFeedback,
-    setStats,
     wordToGuess,
   ])
 
@@ -245,6 +268,7 @@ export function useHangmanGame() {
     guessesRemaining,
     guessLetter,
     hintsRemaining,
+    hintsUsedThisRound: hintsUsedThisRound.current,
     incorrectLetters,
     resetGame: startNewRound,
     resetStats,

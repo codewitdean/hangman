@@ -2,59 +2,16 @@ import { useEffect, useRef } from "react"
 import HangmanDrawing from "./HangmanDrawing"
 import { Keyboard } from "./keyboard"
 import { HangmanWord } from "./HangmanWord"
+import { Confetti } from "./Confetti"
 import {
   type CategoryId,
   DIFFICULTIES,
   MAX_INCORRECT_GUESSES,
 } from "./gameLogic"
-import { type FeedbackType, useHangmanGame } from "./useHangmanGame"
+import { useHangmanGame } from "./useHangmanGame"
+import { useFeedbackSound } from "./useFeedbackSound"
+import { useWordDefinition } from "./useWordDefinition"
 import "./App.css"
-
-const SOUND_MAP: Record<
-  FeedbackType,
-  { duration: number; frequency: number; wave: OscillatorType }
-> = {
-  correct: { duration: 0.1, frequency: 660, wave: "sine" },
-  hint: { duration: 0.12, frequency: 520, wave: "triangle" },
-  loss: { duration: 0.26, frequency: 150, wave: "sawtooth" },
-  win: { duration: 0.22, frequency: 880, wave: "triangle" },
-  wrong: { duration: 0.12, frequency: 180, wave: "square" },
-}
-
-function playFeedbackSound(type: FeedbackType, muted: boolean) {
-  if (muted || typeof window === "undefined") return
-
-  const audioWindow = window as Window &
-    typeof globalThis & {
-      webkitAudioContext?: typeof AudioContext
-    }
-  const AudioContextClass =
-    audioWindow.AudioContext ?? audioWindow.webkitAudioContext
-
-  if (!AudioContextClass) return
-
-  const context = new AudioContextClass()
-  const oscillator = context.createOscillator()
-  const gain = context.createGain()
-  const sound = SOUND_MAP[type]
-
-  oscillator.type = sound.wave
-  oscillator.frequency.setValueAtTime(sound.frequency, context.currentTime)
-  gain.gain.setValueAtTime(0.0001, context.currentTime)
-  gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.02)
-  gain.gain.exponentialRampToValueAtTime(
-    0.0001,
-    context.currentTime + sound.duration,
-  )
-
-  oscillator.connect(gain)
-  gain.connect(context.destination)
-  oscillator.start()
-  oscillator.stop(context.currentTime + sound.duration)
-  oscillator.onended = () => {
-    void context.close()
-  }
-}
 
 function App() {
   const {
@@ -69,6 +26,7 @@ function App() {
     guessesRemaining,
     guessLetter,
     hintsRemaining,
+    hintsUsedThisRound,
     incorrectLetters,
     resetGame,
     resetStats,
@@ -82,11 +40,8 @@ function App() {
   const playAgainButtonRef = useRef<HTMLButtonElement>(null)
   const gameOver = status !== "playing"
 
-  useEffect(() => {
-    if (feedback) {
-      playFeedbackSound(feedback.type, settings.muted)
-    }
-  }, [feedback, settings.muted])
+  useFeedbackSound(feedback, settings.muted)
+  const definition = useWordDefinition(wordToGuess, gameOver)
 
   useEffect(() => {
     if (gameOver) {
@@ -124,6 +79,7 @@ function App() {
 
   return (
     <main className="game-shell">
+      <Confetti active={status === "won"} />
       <header className="game-header">
         <div>
           <p className="eyebrow">React Hangman</p>
@@ -196,6 +152,26 @@ function App() {
           <span>{stats.bestStreak}</span>
           <p>Best</p>
         </div>
+        <div>
+          <span>
+            {stats.gamesPlayed > 0
+              ? `${Math.round((stats.wins / stats.gamesPlayed) * 100)}%`
+              : "—"}
+          </span>
+          <p>Win rate</p>
+        </div>
+        <div>
+          <span>
+            {stats.wins > 0
+              ? (stats.totalGuesses / stats.wins).toFixed(1)
+              : "—"}
+          </span>
+          <p>Avg guesses</p>
+        </div>
+        <div>
+          <span>{hintsUsedThisRound}</span>
+          <p>Hints this round</p>
+        </div>
         <button className="secondary-button" onClick={resetStats} type="button">
           Reset stats
         </button>
@@ -226,6 +202,15 @@ function App() {
           <div>
             <p>{status === "won" ? "Clean solve" : "Round over"}</p>
             <strong>{wordToGuess}</strong>
+            {definition.status === "loading" && (
+              <p className="word-definition">Looking up definition…</p>
+            )}
+            {definition.status === "success" && (
+              <p className="word-definition">
+                <em>{definition.definition.partOfSpeech}</em>{" "}
+                {definition.definition.definition}
+              </p>
+            )}
           </div>
           <button
             className="new-game-button"
@@ -239,6 +224,27 @@ function App() {
       ) : null}
 
       <section className="game-controls" aria-label="Letter choices">
+        <div
+          className="guesses-bar"
+          aria-label={`${guessesRemaining} of ${MAX_INCORRECT_GUESSES} guesses remaining`}
+          role="meter"
+          aria-valuenow={guessesRemaining}
+          aria-valuemin={0}
+          aria-valuemax={MAX_INCORRECT_GUESSES}
+        >
+          {Array.from({ length: MAX_INCORRECT_GUESSES }, (_, i) => (
+            <div
+              key={i}
+              className={`guesses-bar-segment ${
+                i < guessesRemaining ? "is-remaining" : "is-used"
+              } ${
+                guessesRemaining === 1 && i < guessesRemaining ? "is-danger" : ""
+              } ${
+                guessesRemaining === 2 && i < guessesRemaining ? "is-warning" : ""
+              }`}
+            />
+          ))}
+        </div>
         <Keyboard
           activeLetters={activeLetters}
           addGuessedLetter={guessLetter}

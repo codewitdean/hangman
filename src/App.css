@@ -122,7 +122,7 @@ h1 {
 .stats-grid {
   padding: 12px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(90px, 1fr)) auto;
+  grid-template-columns: repeat(7, minmax(80px, 1fr)) auto;
   align-items: stretch;
   gap: 10px;
 }
@@ -194,8 +194,58 @@ h1 {
   text-transform: uppercase;
 }
 
+.word-definition {
+  margin: 8px 0 0;
+  max-width: 480px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-style: normal;
+  line-height: 1.5;
+}
+
+.word-definition em {
+  color: var(--accent-dark);
+  font-style: italic;
+  font-weight: 700;
+}
+
 .game-controls {
   width: 100%;
+}
+
+.guesses-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.guesses-bar-segment {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  transition: background-color 300ms ease;
+}
+
+.guesses-bar-segment.is-remaining {
+  background: var(--good);
+}
+
+.guesses-bar-segment.is-warning {
+  background: #d97706;
+}
+
+.guesses-bar-segment.is-danger {
+  background: var(--bad);
+  animation: pulse-danger 800ms ease-in-out infinite alternate;
+}
+
+.guesses-bar-segment.is-used {
+  background: rgba(32, 33, 36, 0.12);
+}
+
+@keyframes pulse-danger {
+  from { opacity: 1; }
+  to { opacity: 0.45; }
 }
 
 .keyboard {
@@ -328,10 +378,14 @@ h1 {
 .hangman-left-arm,
 .hangman-right-leg,
 .hangman-left-leg {
-  animation: draw-part 180ms ease-out both;
+  animation-duration: 220ms;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
 }
 
 .hangman-head {
+  animation-name: draw-part;
+  transform-origin: center center;
   top: calc(var(--unit) * 52);
   left: calc(var(--figure-center) - (var(--unit) * 31));
   width: var(--head-size);
@@ -342,6 +396,8 @@ h1 {
 }
 
 .hangman-body {
+  animation-name: draw-body;
+  transform-origin: top center;
   top: calc(var(--unit) * 112);
   left: calc(var(--figure-center) - (var(--unit) * 5));
   width: var(--stroke);
@@ -352,6 +408,7 @@ h1 {
 .hangman-left-arm,
 .hangman-right-leg,
 .hangman-left-leg {
+  animation-name: draw-limb;
   width: var(--limb-length);
   height: var(--stroke);
 }
@@ -460,10 +517,51 @@ h1 {
 @keyframes draw-part {
   from {
     opacity: 0;
+    transform: scale(0.6);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
   }
 
   to {
     opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes draw-limb {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scaleX(1.06);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes draw-body {
+  from {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scaleY(1.05);
+  }
+
+  to {
+    opacity: 1;
+    transform: scaleY(1);
   }
 }
 
@@ -519,7 +617,7 @@ h1 {
   }
 
   .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .stats-grid .secondary-button {
